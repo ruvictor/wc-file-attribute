@@ -52,37 +52,48 @@ function vicode_create_field() {
    
    // custom input validation
    function vicode_field_validation( $passed, $product_id, $quantity ) {
+       // WordPress environment
+require( dirname(__FILE__) . '/../../../wp-load.php' );
        if( empty($_FILES['vicode-file-field']["name"]) ) {
 
        // Fails validation
        $passed = false;
        wc_add_notice( __( 'Please attach an image to your product.', 'vicode' ), 'error' );
        }else{
-            $desc = 'some description';
-            // $file = 'http://www.example.com/image.png';
-            // $file_array  = [ 'name' => wp_basename( $file ), 'tmp_name' => download_url( $file ) ];/
-            $file_array  = $_FILES['vicode-file-field'];
+            
+        
 
-            
 
-            $file_array = array(
-                'name' => basename( $url ),
-                'tmp_name' => $tmp
-            );
-            
-            // If error storing temporarily, return the error.
-            if ( is_wp_error( $file_array['tmp_name'] ) ) {
-                return $file_array['tmp_name'];
-            }
-            
-            // Do the validation and storage stuff.
-            $id = media_handle_sideload( $file_array, 0, $desc );
-            
-            // If error storing permanently, unlink.
-            if ( is_wp_error( $id ) ) {
-                @unlink( $file_array['tmp_name'] );
-                return $id;
-            }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
        }
        return $passed;
     // var_dump($_FILES);
@@ -94,8 +105,100 @@ function vicode_create_field() {
    // add field data to the cart
    function vicode_add_field_data_to_cart( $cart_item_data, $product_id, $variation_id, $quantity ) {
        if( ! empty( $_FILES['vicode-file-field']["name"] ) ) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // WordPress environment
+require( dirname(__FILE__) . '/../../../wp-load.php' );
+ 
+$wordpress_upload_dir = wp_upload_dir();
+// $wordpress_upload_dir['path'] is the full server path to wp-content/uploads/2017/05, for multisite works good as well
+// $wordpress_upload_dir['url'] the absolute URL to the same folder, actually we do not need it, just to show the link to file
+$i = 1; // number of tries when the file with the same name already exists
+ 
+$profilepicture = $_FILES['vicode-file-field'];
+$new_file_path = $wordpress_upload_dir['path'] . '/' . $profilepicture['name'];
+$new_file_mime = mime_content_type( $profilepicture['tmp_name'] );
+ 
+if( empty( $profilepicture ) )
+	die( 'File is not selected.' );
+ 
+if( $profilepicture['error'] )
+	die( $profilepicture['error'] );
+ 
+if( $profilepicture['size'] > wp_max_upload_size() )
+	die( 'It is too large than expected.' );
+ 
+if( !in_array( $new_file_mime, get_allowed_mime_types() ) )
+	die( 'WordPress doesn\'t allow this type of uploads.' );
+ 
+while( file_exists( $new_file_path ) ) {
+	$i++;
+	$new_file_path = $wordpress_upload_dir['path'] . '/' . $i . '_' . $profilepicture['name'];
+}
+ 
+// looks like everything is OK
+if( move_uploaded_file( $profilepicture['tmp_name'], $new_file_path ) ) {
+ 
+ 
+	$upload_id = wp_insert_attachment( array(
+		'guid'           => $new_file_path, 
+		'post_mime_type' => $new_file_mime,
+		'post_title'     => preg_replace( '/\.[^.]+$/', '', $profilepicture['name'] ),
+		'post_content'   => '',
+		'post_status'    => 'inherit'
+	), $new_file_path );
+ 
+	// wp_generate_attachment_metadata() won't work if you do not include this file
+	require_once( ABSPATH . 'wp-admin/includes/image.php' );
+ 
+	// Generate and save the attachment metas into the database
+	wp_update_attachment_metadata( $upload_id, wp_generate_attachment_metadata( $upload_id, $new_file_path ) );
+ 
+	// Show the uploaded file in browser
+	// wp_redirect( $wordpress_upload_dir['url'] . '/' . basename( $new_file_path ) );
+ 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
        // Add the item data
-       $cart_item_data['file_field'] = $_POST['vicode-file-field'];
+       $cart_item_data['file_field'] = $wordpress_upload_dir['url'] . '/' . basename( $new_file_path );
        $product = wc_get_product( $product_id );
        $price = $product->get_price();
        $cart_item_data['total_price'] = $price;
@@ -138,7 +241,7 @@ function vicode_create_field() {
    function vicode_add_field_data_to_order( $item, $cart_item_key, $values, $order ) {
        foreach( $item as $cart_item_key=>$values ) {
            if( isset( $values['file_field'] ) ) {
-           $item->add_meta_data( __( 'Custom Field:', 'vicode' ), $values['file_field'], true );
+           $item->add_meta_data( __( 'Custom Field', 'vicode' ), $values['file_field'], true );
            }
        }
    }
